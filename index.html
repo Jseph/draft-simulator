@@ -314,18 +314,33 @@
             }
 
             function saveWinRatesToFile() {
-                const dataStr = JSON.stringify(winRates, null, 2); // Pretty-print JSON
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'win_rates.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
+    // 1. Prompt the user for a filename, providing a default value.
+    let filename = window.prompt("Enter a filename for the matrix:", "win_rates.json");
 
+    // 2. If the user clicks "Cancel", the prompt returns null. Stop the function.
+    if (!filename) {
+        return; 
+    }
+
+    // 3. (Optional but recommended) Ensure the filename ends with .json
+    if (!filename.toLowerCase().endsWith('.json')) {
+        filename += '.json';
+    }
+
+    const dataStr = JSON.stringify(winRates, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // 4. Use the user-provided filename for the download attribute.
+    a.download = filename; 
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
             function handleFileSelect(event) {
                 const file = event.target.files[0];
                 if (!file) return;
