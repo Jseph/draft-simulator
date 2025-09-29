@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draft Simulator & Strategy Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+            color: #d1d5db; /* text-gray-300 */
+        }
+        /* Custom scrollbar for better aesthetics in dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
+        }
+        /* Custom styling for inputs and selects */
+        .custom-input, .custom-select {
+            background-color: #374151; /* bg-gray-700 */
+            border: 1px solid #4b5563; /* bg-gray-600 */
+            color: #d1d5db; /* text-gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .custom-input:focus, .custom-select:focus {
+            outline: none;
+            border-color: #3b82f6; /* focus:border-blue-500 */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        .win-rate-input {
+            width: 60px;
+            padding: 4px 8px;
+            text-align: center;
+        }
+        .matrix-header {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            white-space: nowrap;
+            padding-bottom: 8px;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Draft Strategy & Simulation Tool</h1>
+            <p class="mt-2 text-lg text-gray-400">Analyze matchups and simulate optimal drafts to gain a competitive edge.</p>
+        </header>
+
+        <!-- Main Grid -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Rosters & Win Rate Matrix -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Team Rosters -->
+                <section class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Team Rosters</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <!-- Team 1 Roster -->
+                        <div id="team-1-roster" class="space-y-3">
+                            <h3 class="text-lg font-semibold text-blue-400">Team 1</h3>
+                        </div>
+                        <!-- Team 2 Roster -->
+                        <div id="team-2-roster" class="space-y-3">
+                            <h3 class="text-lg font-semibold text-red-400">Team 2</h3>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Dynamic Win Percentage Matrix -->
+                <section class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 border-b border-gray-700 pb-2 gap-4">
+                        <h2 class="text-xl font-semibold text-white">Matchup Win Rate Matrix</h2>
+                        <button id="generate-matrix-btn" class="w-full sm:w-auto bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-green-500 transition-colors duration-200">
+                            Generate / Update Matrix
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-4">Select full rosters, then generate the matrix to view and edit win rates. The matrix shows Team 1's (rows) win rate against Team 2's (columns).</p>
+                    <div id="matrix-container" class="overflow-x-auto">
+                        <p class="text-gray-400 text-center italic">Select rosters and click 'Generate' to see matchups.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Matchups & Simulation -->
+            <div class="lg:col-span-1 space-y-8">
+                <section class="bg-gray-800 p-6 rounded-lg shadow-lg sticky top-8">
+                    <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Matchup Analysis</h2>
+                    <!-- Manual Matchup Table -->
+                    <div class="space-y-2 mb-6">
+                         <div class="grid grid-cols-12 gap-2 text-xs font-bold text-gray-400 px-2">
+                            <div class="col-span-5">Team 1 Player</div>
+                            <div class="col-span-5">Team 2 Player</div>
+                            <div class="col-span-2 text-right">Win %</div>
+                        </div>
+                        <div id="manual-matchups" class="space-y-2">
+                            <!-- Rows will be generated by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Simulation and Results -->
+                    <div class="space-y-4 pt-4 border-t border-gray-700">
+                         <div class="text-center">
+                            <label for="expected-value" class="block text-sm font-medium text-gray-400 mb-1">Expected Score for Team 1</label>
+                            <div id="expected-value" class="text-4xl font-bold text-white bg-gray-900 rounded-lg py-3">
+                                N/A
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button id="simulate-draft-btn" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500 transition-colors duration-200">
+                                Simulate Optimal Draft
+                            </button>
+                            <button id="clear-matchups-btn" class="w-full bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500 transition-colors duration-200">
+                                Clear Matchups
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA AND CONSTANTS ---
+            const CLASSES = ["Alchemist", "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Necromancer", "Ranger", "Thief", "Wizard"];
+            
+            let winRates = [
+                [0.50, 0.43, 0.55, 0.68, 0.52, 0.55, 0.61, 0.43, 0.65, 0.62, 0.57],
+                [0.57, 0.50, 0.70, 0.37, 0.45, 0.47, 0.29, 0.52, 0.66, 0.63, 0.65],
+                [0.45, 0.30, 0.50, 0.67, 0.50, 0.48, 0.51, 0.33, 0.49, 0.56, 0.41],
+                [0.32, 0.63, 0.33, 0.50, 0.40, 0.66, 0.55, 0.38, 0.45, 0.42, 0.39],
+                [0.48, 0.55, 0.50, 0.60, 0.50, 0.56, 0.45, 0.40, 0.53, 0.59, 0.40],
+                [0.45, 0.53, 0.52, 0.34, 0.44, 0.50, 0.29, 0.55, 0.48, 0.52, 0.57],
+                [0.39, 0.71, 0.49, 0.45, 0.55, 0.71, 0.50, 0.52, 0.55, 0.51, 0.52],
+                [0.57, 0.48, 0.67, 0.62, 0.60, 0.45, 0.48, 0.50, 0.66, 0.69, 0.47],
+                [0.35, 0.34, 0.51, 0.55, 0.47, 0.52, 0.45, 0.34, 0.50, 0.49, 0.48],
+                [0.38, 0.37, 0.44, 0.58, 0.41, 0.48, 0.49, 0.31, 0.51, 0.50, 0.44],
+                [0.43, 0.35, 0.59, 0.61, 0.60, 0.43, 0.48, 0.53, 0.52, 0.56, 0.50],
+            ];
+
+            const scoreOutcomeCache = new Map();
+            const minimaxCache = new Map();
+            
+            // --- DOM ELEMENT REFERENCES ---
+            const team1RosterEl = document.getElementById('team-1-roster');
+            const team2RosterEl = document.getElementById('team-2-roster');
+            const matrixContainerEl = document.getElementById('matrix-container');
+            const generateMatrixBtn = document.getElementById('generate-matrix-btn');
+            const manualMatchupsEl = document.getElementById('manual-matchups');
+            const expectedValueEl = document.getElementById('expected-value');
+            const simulateDraftBtn = document.getElementById('simulate-draft-btn');
+            const clearMatchupsBtn = document.getElementById('clear-matchups-btn');
+
+            // --- CORE LOGIC ---
+
+            function convolve(dist1, dist2) {
+                if (!dist1.length) return dist2;
+                if (!dist2.length) return dist1;
+                const result = new Array(dist1.length + dist2.length - 1).fill(0.0);
+                for (let i = 0; i < dist1.length; i++) {
+                    for (let j = 0; j < dist2.length; j++) {
+                        result[i + j] += dist1[i] * dist2[j];
+                    }
+                }
+                return result;
+            }
+
+            function score_outcome(pairings) {
+                if (!pairings || pairings.length !== 5) return 0;
+                const sortedPairings = [...pairings].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+                const cacheKey = JSON.stringify(sortedPairings);
+                if (scoreOutcomeCache.has(cacheKey)) {
+                    return scoreOutcomeCache.get(cacheKey);
+                }
+                const setWinProbs = pairings.map(p => {
+                    const win_p = winRates[p[0]][p[1]];
+                    return 3 * win_p * win_p - 2 * win_p * win_p * win_p;
+                });
+                let setsDist = [1.0];
+                setWinProbs.forEach(q => {
+                    setsDist = convolve(setsDist, [1 - q, q]);
+                });
+                let probWinMajoritySets = 0.0;
+                for (let k = 3; k < setsDist.length; k++) {
+                    probWinMajoritySets += setsDist[k];
+                }
+                let gamesDist = [1.0];
+                pairings.forEach(p => {
+                    const win_p = winRates[p[0]][p[1]];
+                    const p0 = (1 - win_p) ** 3;
+                    const p1 = 3 * win_p * (1 - win_p) ** 2;
+                    const p2 = 3 * win_p ** 2 * (1 - win_p);
+                    const p3 = win_p ** 3;
+                    gamesDist = convolve(gamesDist, [p0, p1, p2, p3]);
+                });
+                let probWinMajorityGames = 0.0;
+                for (let k = 8; k < gamesDist.length; k++) {
+                    probWinMajorityGames += gamesDist[k];
+                }
+                const expectedScore = 2.0 * probWinMajoritySets + 1.0 * probWinMajorityGames;
+                scoreOutcomeCache.set(cacheKey, expectedScore);
+                return expectedScore;
+            }
+
+            function violatesConstraints(finalPairings, locked_positions) {
+                for (let i = 0; i < 5; i++) {
+                    const p1_locked = locked_positions[i][0];
+                    const p2_locked = locked_positions[i][1];
+
+                    if (p1_locked !== null) {
+                        if (finalPairings[i][0] !== p1_locked) return true;
+                    }
+                    if (p2_locked !== null) {
+                        if (finalPairings[i][1] !== p2_locked) return true;
+                    }
+                }
+                return false;
+            }
+            
+            // --- CORRECT MINIMAX DRAFT ALGORITHM WITH CONSTRAINTS ---
+            function best_choice(team1, team2, isTeam1sTurn, nominee, pairings, locked_positions) {
+                const cacheKey = JSON.stringify({ team1: [...team1].sort(), team2: [...team2].sort(), isTeam1sTurn, nominee, pairings, locked_positions });
+                if (minimaxCache.has(cacheKey)) {
+                    return minimaxCache.get(cacheKey);
+                }
+
+                if (isTeam1sTurn) { // T1 is MAXIMIZER
+                    if (team1.length === 1) { 
+                        const finalPairings = [...pairings, [team1[0], nominee]];
+                        if(violatesConstraints(finalPairings, locked_positions)) {
+                             return null;
+                        }
+                        return { score: score_outcome(finalPairings), pairings: finalPairings };
+                    }
+
+                    let maxEval = -Infinity;
+                    let bestPath = [];
+                    for (const counter of team1) {
+                        const remT1_afterCounter = team1.filter(id => id !== counter);
+                        const newPairings = [...pairings, [counter, nominee]];
+                        
+                        let bestSubScore = -Infinity;
+                        let bestSubPath = [];
+                        for (const nextNominee of remT1_afterCounter) {
+                            const remT1_afterNomination = remT1_afterCounter.filter(id => id !== nextNominee);
+                            const result = best_choice(remT1_afterNomination, team2, false, nextNominee, newPairings, locked_positions);
+                            if (result && result.score > bestSubScore) {
+                                bestSubScore = result.score;
+                                bestSubPath = result.pairings;
+                            }
+                        }
+                        if (bestSubScore > maxEval) {
+                            maxEval = bestSubScore;
+                            bestPath = bestSubPath;
+                        }
+                    }
+                    if (maxEval === -Infinity) {
+                        return null;
+                    }
+                    minimaxCache.set(cacheKey, { score: maxEval, pairings: bestPath });
+                    return { score: maxEval, pairings: bestPath };
+
+                } else { // T2 is MINIMIZER
+                    if (team2.length === 1) {
+                        const finalPairings = [...pairings, [nominee, team2[0]]];
+                         if(violatesConstraints(finalPairings, locked_positions)) {
+                             return null;
+                        }
+                        return { score: score_outcome(finalPairings), pairings: finalPairings };
+                    }
+                    
+                    let minEval = Infinity;
+                    let bestPath = [];
+                    for (const counter of team2) {
+                        const remT2_afterCounter = team2.filter(id => id !== counter);
+                        const newPairings = [...pairings, [nominee, counter]];
+
+                        let bestSubScore = Infinity;
+                        let bestSubPath = [];
+                        for (const nextNominee of remT2_afterCounter) {
+                            const remT2_afterNomination = remT2_afterCounter.filter(id => id !== nextNominee);
+                            const result = best_choice(team1, remT2_afterNomination, true, nextNominee, newPairings, locked_positions);
+                            if (result && result.score < bestSubScore) {
+                                bestSubScore = result.score;
+                                bestSubPath = result.pairings;
+                            }
+                        }
+                        if (bestSubScore < minEval) {
+                            minEval = bestSubScore;
+                            bestPath = bestSubPath;
+                        }
+                    }
+                    if (minEval === Infinity) return null;
+                    minimaxCache.set(cacheKey, { score: minEval, pairings: bestPath });
+                    return { score: minEval, pairings: bestPath };
+                }
+            }
+
+
+            // --- UI INITIALIZATION AND UPDATES ---
+            
+            function createDropdown(id) {
+                const select = document.createElement('select');
+                select.id = id;
+                select.className = 'custom-select w-full p-2';
+                
+                const placeholder = document.createElement('option');
+                placeholder.value = "-1";
+                placeholder.textContent = "Select Character";
+                select.appendChild(placeholder);
+
+                CLASSES.forEach((name, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = name;
+                    select.appendChild(option);
+                });
+                return select;
+            }
+
+            function initRosters() {
+                for (let i = 0; i < 5; i++) {
+                    const div1 = document.createElement('div');
+                    div1.className = 'flex items-center space-x-2';
+                    const label1 = document.createElement('label');
+                    label1.for = `t1-p${i}`;
+                    label1.className = 'w-16 text-sm';
+                    label1.textContent = `Player ${i + 1}`;
+                    const select1 = createDropdown(`t1-p${i}`);
+                    select1.addEventListener('change', () => {
+                        updateManualMatchupOptions();
+                        matrixContainerEl.innerHTML = '<p class="text-gray-400 text-center italic">Roster changed. Click \'Generate / Update Matrix\' to refresh matchups.</p>';
+                    });
+                    div1.appendChild(label1);
+                    div1.appendChild(select1);
+                    team1RosterEl.appendChild(div1);
+
+                    const div2 = document.createElement('div');
+                    div2.className = 'flex items-center space-x-2';
+                    const label2 = document.createElement('label');
+                    label2.for = `t2-p${i}`;
+                    label2.className = 'w-16 text-sm';
+                    label2.textContent = `Player ${i + 1}`;
+                    const select2 = createDropdown(`t2-p${i}`);
+                    select2.addEventListener('change', () => {
+                         updateManualMatchupOptions();
+                         matrixContainerEl.innerHTML = '<p class="text-gray-400 text-center italic">Roster changed. Click \'Generate / Update Matrix\' to refresh matchups.</p>';
+                    });
+                    div2.appendChild(label2);
+                    div2.appendChild(select2);
+                    team2RosterEl.appendChild(div2);
+                }
+            }
+            
+            function generateAndDisplayMatrix() {
+                const team1Roster = [...new Set(Array.from(document.querySelectorAll('#team-1-roster select')).map(s => parseInt(s.value)).filter(v => v > -1))];
+                const team2Roster = [...new Set(Array.from(document.querySelectorAll('#team-2-roster select')).map(s => parseInt(s.value)).filter(v => v > -1))];
+
+                if (team1Roster.length !== 5 || team2Roster.length !== 5) {
+                    console.error("Please select 5 unique characters for each team before generating the matrix.");
+                    return;
+                }
+
+                matrixContainerEl.innerHTML = '';
+                const table = document.createElement('table');
+                table.className = 'w-full border-collapse text-sm';
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = '<th></th>' + team2Roster.map(classIdx => `<th class="matrix-header">${CLASSES[classIdx]}</th>`).join('');
+                thead.appendChild(headerRow);
+                
+                const tbody = document.createElement('tbody');
+                team1Roster.forEach(t1Idx => {
+                    const tr = document.createElement('tr');
+                    let rowHtml = `<td class="font-bold p-1 text-right pr-2">${CLASSES[t1Idx]}</td>`;
+                    team2Roster.forEach(t2Idx => {
+                        rowHtml += `
+                            <td class="p-1">
+                                <input type="number" min="0" max="1" step="0.01" value="${winRates[t1Idx][t2Idx].toFixed(2)}" 
+                                       class="custom-input win-rate-input" data-row="${t1Idx}" data-col="${t2Idx}">
+                            </td>`;
+                    });
+                    tr.innerHTML = rowHtml;
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                matrixContainerEl.appendChild(table);
+            }
+            
+            matrixContainerEl.addEventListener('input', (e) => {
+                if (e.target.matches('.win-rate-input')) {
+                    const row = e.target.dataset.row;
+                    const col = e.target.dataset.col;
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= 0 && value <= 1) {
+                        winRates[row][col] = value;
+                        scoreOutcomeCache.clear();
+                        minimaxCache.clear();
+                        updateAllPairingWinRates();
+                        calculateAndDisplayEV();
+                    }
+                }
+            });
+
+            function initManualMatchups() {
+                for (let i = 0; i < 5; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'grid grid-cols-12 gap-2 items-center';
+                    row.innerHTML = `
+                        <div class="col-span-5">
+                            <select id="manual-t1-p${i}" class="custom-select w-full p-1 text-sm"></select>
+                        </div>
+                        <div class="col-span-5">
+                            <select id="manual-t2-p${i}" class="custom-select w-full p-1 text-sm"></select>
+                        </div>
+                        <div class="col-span-2 text-right font-mono text-sm" id="win-rate-display-${i}">--%</div>
+                    `;
+                    manualMatchupsEl.appendChild(row);
+                }
+                updateManualMatchupOptions();
+                manualMatchupsEl.addEventListener('change', () => {
+                    updateAllPairingWinRates();
+                    calculateAndDisplayEV();
+                });
+            }
+
+            function updateManualMatchupOptions() {
+                const team1Roster = Array.from(document.querySelectorAll('#team-1-roster select')).map(s => parseInt(s.value));
+                const team2Roster = Array.from(document.querySelectorAll('#team-2-roster select')).map(s => parseInt(s.value));
+                for (let i = 0; i < 5; i++) {
+                    const t1Select = document.getElementById(`manual-t1-p${i}`);
+                    const t2Select = document.getElementById(`manual-t2-p${i}`);
+                    const currentT1Val = t1Select.value;
+                    const currentT2Val = t2Select.value;
+                    t1Select.innerHTML = '<option value="-1">Not Set</option>';
+                    team1Roster.filter(id => id > -1).forEach(id => {
+                        t1Select.innerHTML += `<option value="${id}">${CLASSES[id]}</option>`;
+                    });
+                    t1Select.value = currentT1Val;
+                    t2Select.innerHTML = '<option value="-1">Not Set</option>';
+                    team2Roster.filter(id => id > -1).forEach(id => {
+                        t2Select.innerHTML += `<option value="${id}">${CLASSES[id]}</option>`;
+                    });
+                    t2Select.value = currentT2Val;
+                }
+                 updateAllPairingWinRates();
+                 calculateAndDisplayEV();
+            }
+            
+            function updateAllPairingWinRates() {
+                for (let i=0; i<5; i++) {
+                    const t1 = parseInt(document.getElementById(`manual-t1-p${i}`).value);
+                    const t2 = parseInt(document.getElementById(`manual-t2-p${i}`).value);
+                    const display = document.getElementById(`win-rate-display-${i}`);
+                    if (t1 > -1 && t2 > -1) {
+                        display.textContent = `${(winRates[t1][t2] * 100).toFixed(1)}%`;
+                    } else {
+                        display.textContent = '--%';
+                    }
+                }
+            }
+            
+            function calculateAndDisplayEV() {
+                const pairings = [];
+                for (let i = 0; i < 5; i++) {
+                    const t1 = parseInt(document.getElementById(`manual-t1-p${i}`).value);
+                    const t2 = parseInt(document.getElementById(`manual-t2-p${i}`).value);
+                    if (t1 > -1 && t2 > -1) {
+                        pairings.push([t1, t2]);
+                    }
+                }
+                
+                if (pairings.length === 5) {
+                    const ev = score_outcome(pairings);
+                    expectedValueEl.textContent = ev.toFixed(4);
+                } else {
+                    expectedValueEl.textContent = "N/A";
+                }
+            }
+            
+            function handleClearMatchups() {
+                for (let i = 0; i < 5; i++) {
+                    document.getElementById(`manual-t1-p${i}`).value = "-1";
+                    document.getElementById(`manual-t2-p${i}`).value = "-1";
+                }
+                updateAllPairingWinRates();
+                calculateAndDisplayEV();
+            }
+
+            function handleSimulateDraft() {
+                minimaxCache.clear();
+                const team1Roster = [...new Set(Array.from(document.querySelectorAll('#team-1-roster select')).map(s => parseInt(s.value)).filter(v => v > -1))];
+                const team2Roster = [...new Set(Array.from(document.querySelectorAll('#team-2-roster select')).map(s => parseInt(s.value)).filter(v => v > -1))];
+
+                if (team1Roster.length !== 5 || team2Roster.length !== 5) {
+                    console.error('Please select 5 unique characters for each team.');
+                    return;
+                }
+                
+                const locked_positions = [];
+                 for (let i = 0; i < 5; i++) {
+                    const t1 = parseInt(document.getElementById(`manual-t1-p${i}`).value);
+                    const t2 = parseInt(document.getElementById(`manual-t2-p${i}`).value);
+                    locked_positions.push([t1 > -1 ? t1 : null, t2 > -1 ? t2 : null]);
+                }
+
+                let bestOverallScore = -Infinity;
+                let optimalDraft = [];
+
+                // T1 tries every possible first nomination from its full roster
+                for (const nominee of team1Roster) {
+                    const team1ForSim = team1Roster.filter(id => id !== nominee);
+                    const result = best_choice(team1ForSim, team2Roster, false, nominee, [], locked_positions);
+                    if (result && result.score > bestOverallScore) {
+                        bestOverallScore = result.score;
+                        optimalDraft = result.pairings;
+                    }
+                }
+
+                if (optimalDraft.length === 0) {
+                    console.error("Simulation failed. Could not determine an optimal draft that satisfies the constraints.");
+                    return;
+                }
+                
+                for (let i = 0; i < 5; i++) {
+                    document.getElementById(`manual-t1-p${i}`).value = optimalDraft[i][0];
+                    document.getElementById(`manual-t2-p${i}`).value = optimalDraft[i][1];
+                }
+
+                updateAllPairingWinRates();
+                calculateAndDisplayEV();
+            }
+
+
+            // --- INITIALIZATION ---
+            initRosters();
+            initManualMatchups();
+            updateManualMatchupOptions();
+            generateMatrixBtn.addEventListener('click', generateAndDisplayMatrix);
+            simulateDraftBtn.addEventListener('click', handleSimulateDraft);
+            clearMatchupsBtn.addEventListener('click', handleClearMatchups);
+        });
+    </script>
+</body>
+</html>
+
