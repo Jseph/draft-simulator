@@ -221,8 +221,8 @@
                     probWinMajorityGames += gamesDist[k];
                 }
                 // Uncomment for standard scoring
-                // const expectedScore = 2.0 * probWinMajoritySets + 1.0 * probWinMajorityGames;
-                const expectedScore =1.0 * probWinMajoritySets + 0.0 * probWinMajorityGames;
+                const expectedScore = 2.0 * probWinMajoritySets + 1.0 * probWinMajorityGames;
+                // const expectedScore =1.0 * probWinMajoritySets + 0.0 * probWinMajorityGames;
                 scoreOutcomeCache.set(cacheKey, expectedScore);
                 return expectedScore;
             }
